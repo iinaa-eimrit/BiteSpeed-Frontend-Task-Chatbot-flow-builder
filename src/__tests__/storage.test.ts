@@ -1,15 +1,37 @@
-import { saveFlow, loadFlow, clearFlow } from '../lib/storage';
-import type { Node, Edge } from 'reactflow';
+import { countIncoming, hasMultipleZeroIncoming, validateFlow } from '../lib/validation';
+import type { Edge, Node } from 'reactflow';
 
-const node: Node = { id: 'n1', type: 'textMessage', position: {x:10,y:20}, data: { text: 'hello' } } as any;
-const edge: Edge = { id: 'e1', source: 'n1', target: 'n2' } as any;
+type TextData = { text: string };
+type RFNode = Node<TextData>;
+type RFEdge = Edge;
 
-beforeEach(() => clearFlow());
+const makeNode = (id: string): RFNode => ({
+  id,
+  type: 'textMessage',
+  position: { x: 0, y: 0 },
+  data: { text: 't' },
+});
 
-test('save and load roundtrip', () => {
-  saveFlow([node], [edge]);
-  const loaded = loadFlow();
-  expect(loaded).not.toBeNull();
-  expect(loaded!.nodes[0].id).toBe('n1');
-  expect(loaded!.edges[0].id).toBe('e1');
+const makeEdge = (id: string, source: string, target: string): RFEdge => ({
+  id,
+  source,
+  target,
+});
+
+test('countIncoming tallies targets', () => {
+  const edges: RFEdge[] = [makeEdge('e1', 'a', 'b'), makeEdge('e2', 'c', 'b')];
+  const map = countIncoming(edges);
+  expect(map.get('b')).toBe(2);
+});
+
+test('hasMultipleZeroIncoming detects invalid graph', () => {
+  const nodes: RFNode[] = [makeNode('a'), makeNode('b'), makeNode('c')];
+  const edges: RFEdge[] = [makeEdge('e1', 'a', 'c')];
+  expect(hasMultipleZeroIncoming(nodes, edges)).toBe(true);
+});
+
+test('validateFlow ok when at most one node has zero incoming', () => {
+  const nodes: RFNode[] = [makeNode('a'), makeNode('b')];
+  const edges: RFEdge[] = [makeEdge('e1', 'a', 'b')];
+  expect(validateFlow(nodes, edges).ok).toBe(true);
 });
